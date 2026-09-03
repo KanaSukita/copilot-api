@@ -13,6 +13,7 @@ import {
   type AnthropicAssistantMessage,
   type AnthropicMessage,
   type AnthropicMessagesPayload,
+  type AnthropicSystemMessage,
   type AnthropicResponse,
   type AnthropicTextBlock,
   type AnthropicThinkingBlock,
@@ -62,11 +63,19 @@ function translateAnthropicMessagesToOpenAI(
 ): Array<Message> {
   const systemMessages = handleSystemPrompt(system)
 
-  const otherMessages = anthropicMessages.flatMap((message) =>
-    message.role === "user" ?
-      handleUserMessage(message)
-    : handleAssistantMessage(message),
-  )
+  const otherMessages = anthropicMessages.flatMap((message) => {
+    switch (message.role) {
+      case "user": {
+        return handleUserMessage(message)
+      }
+      case "system": {
+        return handleSystemMessage(message)
+      }
+      default: {
+        return handleAssistantMessage(message)
+      }
+    }
+  })
 
   return [...systemMessages, ...otherMessages]
 }
@@ -84,6 +93,15 @@ function handleSystemPrompt(
     const systemText = system.map((block) => block.text).join("\n\n")
     return [{ role: "system", content: systemText }]
   }
+}
+
+function handleSystemMessage(message: AnthropicSystemMessage): Array<Message> {
+  const text =
+    typeof message.content === "string" ?
+      message.content
+    : message.content.map((block) => block.text).join("\n\n")
+
+  return [{ role: "system", content: text }]
 }
 
 function handleUserMessage(message: AnthropicUserMessage): Array<Message> {
