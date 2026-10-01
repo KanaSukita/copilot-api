@@ -6,6 +6,7 @@ import { streamSSE } from "hono/streaming"
 import { awaitApproval } from "~/lib/approval"
 import { checkRateLimit } from "~/lib/rate-limit"
 import { state } from "~/lib/state"
+import { findModel } from "~/lib/utils"
 import {
   createChatCompletions,
   type ChatCompletionChunk,
@@ -20,6 +21,10 @@ import {
   translateToAnthropic,
   translateToOpenAI,
 } from "./non-stream-translation"
+import {
+  handleResponsesCompletion,
+  usesResponsesApi,
+} from "./responses-handler"
 import { translateChunkToAnthropicEvents } from "./stream-translation"
 
 export async function handleCompletion(c: Context) {
@@ -27,6 +32,11 @@ export async function handleCompletion(c: Context) {
 
   const anthropicPayload = await c.req.json<AnthropicMessagesPayload>()
   consola.debug("Anthropic request payload:", JSON.stringify(anthropicPayload))
+
+  const model = await findModel(anthropicPayload.model)
+  if (usesResponsesApi(model)) {
+    return handleResponsesCompletion(c, anthropicPayload, model)
+  }
 
   const openAIPayload = translateToOpenAI(anthropicPayload)
   consola.debug(

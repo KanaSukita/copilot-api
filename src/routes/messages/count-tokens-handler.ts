@@ -2,8 +2,8 @@ import type { Context } from "hono"
 
 import consola from "consola"
 
-import { state } from "~/lib/state"
 import { getTokenCount } from "~/lib/tokenizer"
+import { findModel } from "~/lib/utils"
 
 import { type AnthropicMessagesPayload } from "./anthropic-types"
 import { translateToOpenAI } from "./non-stream-translation"
@@ -19,9 +19,7 @@ export async function handleCountTokens(c: Context) {
 
     const openAIPayload = translateToOpenAI(anthropicPayload)
 
-    const selectedModel = state.models?.data.find(
-      (model) => model.id === anthropicPayload.model,
-    )
+    const selectedModel = await findModel(anthropicPayload.model)
 
     if (!selectedModel) {
       consola.warn("Model not found, returning default token count")

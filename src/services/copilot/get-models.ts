@@ -28,6 +28,7 @@ interface ModelSupports {
   tool_calls?: boolean
   parallel_tool_calls?: boolean
   dimensions?: boolean
+  reasoning_effort?: Array<string>
 }
 
 interface ModelCapabilities {
@@ -48,6 +49,7 @@ export interface Model {
   preview: boolean
   vendor: string
   version: string
+  supported_endpoints?: Array<string>
   policy?: {
     state: string
     terms: string
