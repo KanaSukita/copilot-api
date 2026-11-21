@@ -322,6 +322,23 @@ Here is an example `.claude/settings.json` file:
 }
 ```
 
+### Copilot Auto and Fusion
+
+Besides real model ids, the Anthropic endpoints accept virtual models that let Copilot pick the model:
+
+| Model                                                                  | Routing                                                                                     |
+| ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| `auto`, `auto-efficiency`, `auto-balance`, `auto-intelligence`, `auto-fast` | Copilot Auto (`POST /auto`), one model per conversation                                |
+| `fusion` (alias `fusion-standard`)                                     | Fusion Standard, which is Auto's balance tier                                               |
+| `fusion-high` (alias `hydrafusion`)                                    | Fusion High: a plan from `POST /model/fusion` for every user prompt                         |
+| `fusion-max` (alias `hydrafusion-max`)                                 | Fusion Max: like High, with stronger (and much more expensive) models                       |
+
+A Fusion plan names a model and reasoning effort per step. The proxy runs the whole turn on the plan's root model (the solo model, or the cascade's draft model) with the planned reasoning effort; it does not run the cascade's judge and repair steps. If planning fails, the proxy falls back to Auto.
+
+### Long context
+
+Copilot accepts prompts up to `max_input_tokens` from `/v1/models` (up to 1M for Claude Opus, GPT-6 and Gemini), billing prompts above the default tier (`copilot.default_max_input_tokens`, usually 200k–272k) at the long-context rate. Claude Code assumes a 200k window unless the model name ends in `[1m]`, e.g. `"ANTHROPIC_MODEL": "claude-opus-5.5[1m]"`; the proxy strips the suffix. `--claude-code` adds it automatically for models whose long-context tier costs no more per token. When a prompt exceeds the model's limit, the proxy answers with Anthropic's "prompt is too long" error so Claude Code compacts the conversation.
+
 You can find more options here: [Claude Code settings](https://docs.anthropic.com/en/docs/claude-code/settings#environment-variables)
 
 You can also read more about IDE integration here: [Add Claude Code to your IDE](https://docs.anthropic.com/en/docs/claude-code/ide-integrations)

@@ -60,7 +60,7 @@ export function translateToResponses(
   model: Model,
 ): ResponsesPayload {
   const returnThinking = shouldReturnThinking(payload, model)
-  const maxOutputTokens = model.capabilities.limits.max_output_tokens
+  const maxOutputTokens = model.capabilities.limits?.max_output_tokens
 
   return {
     model: payload.model,
@@ -117,7 +117,7 @@ function translateReasoning(
 
 // Claude Code sends metadata.user_id as JSON carrying the session id, which
 // makes a good prompt cache key for the whole conversation.
-function getSessionId(userId: string | undefined): string | undefined {
+export function getSessionId(userId: string | undefined): string | undefined {
   if (!userId) {
     return undefined
   }

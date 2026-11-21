@@ -6,6 +6,7 @@ import { streamSSE } from "hono/streaming"
 import type { Model } from "~/services/copilot/get-models"
 
 import { awaitApproval } from "~/lib/approval"
+import { noteLongContextUsage } from "~/lib/context-limits"
 import { state } from "~/lib/state"
 import {
   createResponses,
@@ -35,8 +36,9 @@ export function usesResponsesApi(model: Model | undefined): model is Model {
 export async function handleResponsesCompletion(
   c: Context,
   anthropicPayload: AnthropicMessagesPayload,
-  model: Model,
+  target: { model: Model; sessionToken?: string },
 ) {
+  const { model, sessionToken } = target
   const responsesPayload = translateToResponses(anthropicPayload, model)
   consola.debug(
     "Translated Responses request payload:",
@@ -47,7 +49,7 @@ export async function handleResponsesCompletion(
     await awaitApproval()
   }
 
-  const response = await createResponses(responsesPayload)
+  const response = await createResponses(responsesPayload, { sessionToken })
   const returnThinking = shouldReturnThinking(anthropicPayload, model)
 
   if (isNonStreaming(response)) {
@@ -55,6 +57,7 @@ export async function handleResponsesCompletion(
       "Non-streaming response from Copilot Responses:",
       JSON.stringify(response).slice(-400),
     )
+    noteLongContextUsage(model, response.usage?.input_tokens)
     return c.json(translateResponsesToAnthropic(response, returnThinking))
   }
 
@@ -69,6 +72,9 @@ export async function handleResponsesCompletion(
       }
 
       const event = JSON.parse(rawEvent.data) as ResponseStreamEvent
+      if (event.type === "response.completed") {
+        noteLongContextUsage(model, event.response.usage?.input_tokens)
+      }
       const events = translateResponsesEventToAnthropic(event, streamState)
 
       for (const anthropicEvent of events) {

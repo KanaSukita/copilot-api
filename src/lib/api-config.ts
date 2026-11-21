@@ -13,6 +13,10 @@ const USER_AGENT = `GitHubCopilotChat/${COPILOT_VERSION}`
 
 const API_VERSION = "2025-04-01"
 
+// /models, /auto and /model/fusion only expose billing tiers and long-context limits (and /auto
+// only exists at all) on a newer API version. Chat calls stay on API_VERSION.
+const MODELS_API_VERSION = "2026-08-01"
+
 export const copilotBaseUrl = (state: State) =>
   state.accountType === "individual" ?
     "https://api.githubcopilot.com"
@@ -35,6 +39,24 @@ export const copilotHeaders = (state: State, vision: boolean = false) => {
 
   return headers
 }
+
+export const copilotModelsHeaders = (state: State) => ({
+  ...copilotHeaders(state),
+  "x-github-api-version": MODELS_API_VERSION,
+})
+
+// Requests carrying the token from /auto or /model/fusion are billed as Auto or
+// Fusion requests. Copilot rejects Fusion tokens on API versions before
+// 2025-07-16, so model calls carrying a token use the newer version.
+export const sessionTokenHeaders = (
+  sessionToken: string | undefined,
+): Record<string, string> =>
+  sessionToken ?
+    {
+      "copilot-session-token": sessionToken,
+      "x-github-api-version": MODELS_API_VERSION,
+    }
+  : {}
 
 export const GITHUB_API_BASE_URL = "https://api.github.com"
 export const githubHeaders = (state: State) => ({

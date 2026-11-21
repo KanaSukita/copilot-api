@@ -1,12 +1,17 @@
 import consola from "consola"
 import { events } from "fetch-event-stream"
 
-import { copilotHeaders, copilotBaseUrl } from "~/lib/api-config"
+import {
+  copilotHeaders,
+  copilotBaseUrl,
+  sessionTokenHeaders,
+} from "~/lib/api-config"
 import { HTTPError } from "~/lib/error"
 import { state } from "~/lib/state"
 
 export const createChatCompletions = async (
   payload: ChatCompletionsPayload,
+  options: { sessionToken?: string } = {},
 ) => {
   if (!state.copilotToken) throw new Error("Copilot token not found")
 
@@ -25,6 +30,7 @@ export const createChatCompletions = async (
   // Build headers and add X-Initiator
   const headers: Record<string, string> = {
     ...copilotHeaders(state, enableVision),
+    ...sessionTokenHeaders(options.sessionToken),
     "X-Initiator": isAgentCall ? "agent" : "user",
   }
 
@@ -148,6 +154,7 @@ export interface ChatCompletionsPayload {
     | { type: "function"; function: { name: string } }
     | null
   user?: string | null
+  reasoning_effort?: string | null
 }
 
 export interface Tool {

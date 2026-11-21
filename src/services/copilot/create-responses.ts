@@ -1,13 +1,20 @@
 import consola from "consola"
 import { events } from "fetch-event-stream"
 
-import { copilotHeaders, copilotBaseUrl } from "~/lib/api-config"
+import {
+  copilotHeaders,
+  copilotBaseUrl,
+  sessionTokenHeaders,
+} from "~/lib/api-config"
 import { HTTPError } from "~/lib/error"
 import { state } from "~/lib/state"
 
 // Copilot serves some models (e.g. the GPT-5.5+ family) only through the
 // OpenAI Responses API instead of /chat/completions.
-export const createResponses = async (payload: ResponsesPayload) => {
+export const createResponses = async (
+  payload: ResponsesPayload,
+  options: { sessionToken?: string } = {},
+) => {
   if (!state.copilotToken) throw new Error("Copilot token not found")
 
   const enableVision = payload.input.some(
@@ -27,6 +34,7 @@ export const createResponses = async (payload: ResponsesPayload) => {
 
   const headers: Record<string, string> = {
     ...copilotHeaders(state, enableVision),
+    ...sessionTokenHeaders(options.sessionToken),
     "X-Initiator": isAgentCall ? "agent" : "user",
   }
 

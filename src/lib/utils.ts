@@ -3,6 +3,7 @@ import consola from "consola"
 import { getModels, type Model } from "~/services/copilot/get-models"
 import { getVSCodeVersion } from "~/services/get-vscode-version"
 
+import { modelIdCandidates } from "./model-name"
 import { state } from "./state"
 
 const MODELS_REFRESH_INTERVAL_MS = 5 * 60 * 1000
@@ -22,12 +23,24 @@ export async function cacheModels(): Promise<void> {
   lastModelsRefresh = Date.now()
 }
 
+function lookupModel(modelId: string): Model | undefined {
+  const models = state.models?.data
+  if (!models) return undefined
+
+  for (const candidate of modelIdCandidates(modelId)) {
+    const model = models.find((entry) => entry.id === candidate)
+    if (model) return model
+  }
+  return undefined
+}
+
 /**
- * Looks up a model in the cache. Copilot adds and retires models while the
- * server is running, so an unknown id triggers a (throttled) cache refresh.
+ * Looks up a model in the cache, also accepting the spellings clients use for
+ * Copilot ids (see modelIdCandidates). Copilot adds and retires models while
+ * the server is running, so an unknown id triggers a (throttled) cache refresh.
  */
 export async function findModel(modelId: string): Promise<Model | undefined> {
-  const cached = state.models?.data.find((model) => model.id === modelId)
+  const cached = lookupModel(modelId)
   if (cached || Date.now() - lastModelsRefresh < MODELS_REFRESH_INTERVAL_MS) {
     return cached
   }
@@ -39,7 +52,16 @@ export async function findModel(modelId: string): Promise<Model | undefined> {
   } catch (error) {
     consola.warn("Failed to refresh models:", error)
   }
-  return state.models?.data.find((model) => model.id === modelId)
+  return lookupModel(modelId)
+}
+
+/** The model Copilot itself falls back to when nothing else is chosen */
+export function findDefaultChatModel(): Model | undefined {
+  const models = state.models?.data
+  return (
+    models?.find((model) => model.is_chat_default)
+    ?? models?.find((model) => model.capabilities.type === "chat")
+  )
 }
 
 export const cacheVSCodeVersion = async () => {
